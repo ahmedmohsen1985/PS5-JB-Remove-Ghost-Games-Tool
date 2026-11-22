@@ -1,8 +1,14 @@
 # PS5 Ghost Game Remover
 
-A small Python tool that hard-removes a stuck PS5 game when the normal uninstall fails (for example with error `0x80B21B02`).
+A Python tool that fully removes a stuck/ghost PS5 game when the normal uninstall fails (for example with error `0x80B21B02`).
 
-It works by editing the PS5's app database (`/system_data/priv/mms/app.db`) directly, the same way we fixed `PPSA99078` manually.
+It cleans:
+- `app.db` — main app database
+- `appinfo.db` — app metadata database
+- `bgft.db` — background download/install task database
+- Leftover folders in `/user/app/`, `/user/appmeta/`, `/system_data/priv/appmeta/`, `/system_data/httpcache/nobackup/`
+- ShadowMount icon caches in `/data/shadowmount/icon-cache/`
+- Save-data folders (unless you use `--keep-saves`)
 
 ## What you need
 
@@ -28,14 +34,13 @@ It works by editing the PS5's app database (`/system_data/priv/mms/app.db`) dire
    Replace `PPSA99078` with the actual Title ID of the stuck game.
 
 4. The script will:
-   - Check that the game is still in the PS5 app database
-   - Back up the original `app.db` on the console to `/data/app.db.backup_YYYYMMDD_HHMMSS`
-   - Download the database to this computer
+   - Back up the three system databases on the console
+   - Download them to this computer
    - Remove every database row for that Title ID
-   - Upload the cleaned database back to the PS5
-   - Replace the original `app.db`
-   - Delete leftover folders `/user/app/<TITLE_ID>` and `/user/appmeta/<TITLE_ID>`
-   - Verify the Title ID is gone
+   - Upload the cleaned databases back to the PS5
+   - Replace the originals
+   - Delete leftover app/meta/icon-cache folders
+   - Verify the Title ID is gone from the main app database
 
 ## Optional flags
 
@@ -46,19 +51,22 @@ python remove_ghost_game.py PPSA99078 --console 192.168.1.4
 # Use a different PS5Upload engine URL/port
 python remove_ghost_game.py PPSA99078 --engine http://127.0.0.1:19113
 
-# Skip the automatic backup on the console (not recommended)
+# Skip database backups on the console (not recommended)
 python remove_ghost_game.py PPSA99078 --skip-backup
+
+# Keep save-data folders
+python remove_ghost_game.py PPSA99078 --keep-saves
 ```
 
 ## Important warnings
 
-- **This edits a system database.** A wrong Title ID will remove a different game.
+- **This edits system databases.** A wrong Title ID will remove a different game.
 - **Always double-check the Title ID** before pressing Enter.
-- A backup of `app.db` is automatically created on the console before any changes.
-- If something goes wrong, you can restore the backup by copying it back:
+- Backups of the three databases are automatically created on the console under `/data/ghostremover_backups/`.
+- If something goes wrong, you can restore a backup by copying it back, for example:
 
   ```text
-  cp /data/app.db.backup_YYYYMMDD_HHMMSS /system_data/priv/mms/app.db
+  cp /data/ghostremover_backups/app.db.backup_YYYYMMDD_HHMMSS /system_data/priv/mms/app.db
   chmod 644 /system_data/priv/mms/app.db
   ```
 
@@ -73,7 +81,7 @@ The game tile may still appear on the PS5 home screen until the UI refreshes. If
 | `No PS5 consoles known to PS5Upload` | Make sure the PS5Upload app/engine is running and the PS5 is listed. |
 | `Failed to connect` | Check that the PS5Upload engine is running and the URL/port is correct (default: `http://127.0.0.1:19113`). |
 | Title still shows on home screen | Restart the PS5 to refresh the UI. |
-| Home screen looks wrong | Restore the `app.db` backup from `/data/` using the PS5Upload shell. |
+| Home screen looks wrong | Restore the database backups from `/data/ghostremover_backups/` using the PS5Upload shell. |
 
 ## Files in this folder
 
